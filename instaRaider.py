@@ -16,9 +16,9 @@ import email.utils as eut
 import requests
 import calendar
 try:
-    from requests.packages.urllib3.exceptions import InsecurePlatformWarning
+    from requests.packages.urllib3.exceptions import *
 except ImportError:
-    from urllib3.exceptions import InsecurePlatformWarning
+    from urllib3.exceptions import *
 import time
 import warnings
 import selenium.webdriver as webdriver
