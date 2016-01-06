@@ -15,10 +15,10 @@ import re
 import email.utils as eut
 import requests
 import calendar
-try:
-    from requests.packages.urllib3.exceptions import *
-except ImportError:
-    from urllib3.exceptions import *
+#try:
+#    from requests.packages.urllib3.exceptions import *
+#except ImportError:
+#    from urllib3.exceptions import *
 import time
 import warnings
 import selenium.webdriver as webdriver
@@ -33,7 +33,7 @@ try:
 except ImportError:
     GExiv2 = None
 
-warnings.filterwarnings("ignore", category=InsecurePlatformWarning)
+#warnings.filterwarnings("ignore", category=InsecurePlatformWarning)
 
 class PrivateUserError(Exception):
     """Raised if the profile is found to be private"""
