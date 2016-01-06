@@ -13,14 +13,17 @@ import os
 import os.path as op
 import re
 import email.utils as eut
-import requests
 import calendar
-#try:
-#    from requests.packages.urllib3.exceptions import *
-#except ImportError:
-#    from urllib3.exceptions import *
-import time
+import requests
 import warnings
+
+try:
+    from urllib3.exceptions import InsecurePlatformWarning
+    warnings.filterwarnings("ignore", category=InsecurePlatformWarning)
+except ImportError:
+    pass
+
+import time
 import selenium.webdriver as webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -33,10 +36,10 @@ try:
 except ImportError:
     GExiv2 = None
 
-#warnings.filterwarnings("ignore", category=InsecurePlatformWarning)
 
 class PrivateUserError(Exception):
     """Raised if the profile is found to be private"""
+
 
 try:
     import urlparse
@@ -45,9 +48,15 @@ except ImportError:
 
 
 class InstaRaider(object):
-
-    def __init__(self, username, directory, num_to_download=None,
-                 log_level='info', use_metadata=False, get_videos=False):
+    def __init__(
+        self,
+        username,
+        directory,
+        num_to_download=None,
+        log_level='info',
+        use_metadata=False,
+        get_videos=False
+    ):
         self.username = username
         self.profile_url = self.get_url(username)
         self.directory = directory
@@ -65,7 +74,7 @@ class InstaRaider(object):
     def __del__(self):
         if self.webdriver:
             self.webdriver.close()
-            
+
     def get_url(self, path):
         return urlparse.urljoin('https://instagram.com', path)
 
@@ -84,7 +93,9 @@ class InstaRaider(object):
 
     def setup_webdriver(self):
         self.profile = webdriver.FirefoxProfile()
-        self.profile.set_preference("general.useragent.override", self.user_agent)
+        self.profile.set_preference(
+            "general.useragent.override", self.user_agent
+        )
         self.webdriver = webdriver.Firefox(self.profile)
         self.webdriver.set_window_size(480, 320)
         self.webdriver.set_window_position(800, 0)
@@ -101,9 +112,11 @@ class InstaRaider(object):
 
     def log_in_user(self):
         driver = self.webdriver
-        self.log('You need to login to access this profile.',
-                 'Redirecting you to the login page in the browser.',
-                 level=logging.WARN)
+        self.log(
+            'You need to login to access this profile.',
+            'Redirecting you to the login page in the browser.',
+            level=logging.WARN
+        )
         driver.get(self.get_url('accounts/login/'))
 
         # Wait until user has been successfully logged in and redirceted
@@ -125,7 +138,9 @@ class InstaRaider(object):
         """
         self.log(self.username, 'has', self.num_posts, 'posts on Instagram.')
         if self.num_to_download is not None:
-            self.log("The first", self.num_to_download, "of them will be downloaded.")
+            self.log(
+                "The first", self.num_to_download, "of them will be downloaded."
+            )
 
         num_to_download = self.num_to_download or self.num_posts
         driver = self.webdriver
@@ -176,13 +191,21 @@ class InstaRaider(object):
         try:
             req.raise_for_status()
         except:
-            self.log('User', self.username, 'is not valid.',
-                     level=logging.ERROR)
+            self.log(
+                'User',
+                self.username,
+                'is not valid.',
+                level=logging.ERROR
+            )
             return False
 
         if not self.num_posts:
-            self.log('User', self.username, 'has no photos to download.',
-                     level=logging.ERROR)
+            self.log(
+                'User',
+                self.username,
+                'has no photos to download.',
+                level=logging.ERROR
+            )
             return False
         return True
 
@@ -228,13 +251,22 @@ class InstaRaider(object):
             if not op.isfile(photo_name):
                 headers = self.save_photo(photo_url, photo_name)
                 photos_saved += 1
-                self.log('Downloaded file {}/{} ({}).'.format(
-                    photos_saved, num_to_download, photo_basename))
+                self.log(
+                    'Downloaded file {}/{} ({}).'.format(
+                        photos_saved, num_to_download, photo_basename
+                    )
+                )
                 # put info from Instagram post into image metadata
                 if self.use_metadata:
                     self.add_metadata(photo_name, caption, date_time)
                 if "last-modified" in headers:
-                    modtime = calendar.timegm(eut.parsedate(headers["last-modified"]))
+                    modtime = calendar.timegm(
+                        eut.parsedate(
+                            headers[
+                                "last-modified"
+                            ]
+                        )
+                    )
                     os.utime(photo_name, (modtime, modtime))
             else:
                 self.log('Skipping file', photo_name, 'as it already exists.')
@@ -260,17 +292,24 @@ class InstaRaider(object):
         if self.use_metadata:
             if not GExiv2:
                 self.use_metadata = False
-                self.log('GExiv2 python module not found.',
-                         'Images will not be tagged.')
+                self.log(
+                    'GExiv2 python module not found.',
+                    'Images will not be tagged.'
+                )
             try:
-                json_data = re.search(r'(?s)<script [^>]*>window\._sharedData'
-                                      r'.*?"nodes".+?</script>',
-                                      self.html_source)
+                json_data = re.search(
+                    r'(?s)<script [^>]*>window\._sharedData'
+                    r'.*?"nodes".+?</script>', self.html_source
+                )
                 json_data = re.search(r'{.+}', json_data.group(0))
                 json_data = json.loads(json_data.group(0))
                 photos = list(gen_dict_extract('nodes', json_data))[0]
                 # find profile_pic
-                profile_pic = list(gen_dict_extract('profile_pic_url', json_data))
+                profile_pic = list(
+                    gen_dict_extract(
+                        'profile_pic_url', json_data
+                    )
+                )
                 if profile_pic:
                     # todo (possible):
                     #   add a key in the dict to indicate this is profile_pic.
@@ -284,12 +323,15 @@ class InstaRaider(object):
             except:
                 if self.use_metadata:
                     self.use_metadata = False
-                    self.log('Could not find any image metadata.',
-                             'Photos will not be tagged.')
+                    self.log(
+                        'Could not find any image metadata.',
+                        'Photos will not be tagged.'
+                    )
         else:
-            links = re.finditer(r'src="([https]+:...[\/\w \.-]*..[\/\w \.-]*'
-                                r'..[\/\w \.-]*..[\/\w \.-].jpg)',
-                                self.html_source)
+            links = re.finditer(
+                r'src="([https]+:...[\/\w \.-]*..[\/\w \.-]*'
+                r'..[\/\w \.-]*..[\/\w \.-].jpg)', self.html_source
+            )
             photos = [{'display_src': m.group(1)} for m in links]
         for photo in photos:
             date = photo.get('date')
@@ -307,26 +349,30 @@ class InstaRaider(object):
         - activate all links to load video url
         - extract and download video url
         """
-        
+
         if not self.get_videos:
-            return;
-            
+            return
+
         # We need to use the driver to query the video wrappers
         driver = self.webdriver
-        
+
         num_to_download = self.num_to_download or self.num_posts
         if self.html_source is None:
             self.html_source = self.load_instagram()
         if not op.exists(self.directory):
             os.makedirs(self.directory)
-        
+
         videos_saved = 0
         self.log("Saving videos to", self.directory)
-        
+
         # Find all of the video wrappers
-        video_wrapper_elements = driver.find_elements_by_xpath('.//*[@id="react-root"]/section/main/article/div/div[1]/div/a[.//*[@Class="w79 f99"]]')
-        video_wrapper_urls = [link.get_attribute('href') for link in video_wrapper_elements]
-        
+        video_wrapper_elements = driver.find_elements_by_xpath(
+            './/*[@id="react-root"]/section/main/article/div/div[1]/div/a[.//*[@Class="w79 f99"]]'
+        )
+        video_wrapper_urls = [
+            link.get_attribute('href') for link in video_wrapper_elements
+        ]
+
         for video_wrapper in video_wrapper_urls:
             # Fetch the link of the video wrapper
             driver.get(video_wrapper)
@@ -342,21 +388,31 @@ class InstaRaider(object):
             video_elements = driver.find_elements_by_class_name('s68')
             if len(video_elements) > 0:
                 video_url = video_elements[0].get_attribute('src')
-                video_name = op.join(self.directory, video_url.split('/')[len(video_url.split('/')) - 1])
-                
+                video_name = op.join(
+                    self.directory,
+                    video_url.split('/')[len(video_url.split('/')) - 1]
+                )
+
                 if not op.isfile(video_name):
-                    self.save_photo(video_url, video_name)  
+                    self.save_photo(video_url, video_name)
                     videos_saved += 1
-                    self.log('Downloaded file {}/{} ({}).'.format(
-                        videos_saved, num_to_download, op.basename(video_name)))
+                    self.log(
+                        'Downloaded file {}/{} ({}).'.format(
+                            videos_saved, num_to_download, op.basename(
+                                video_name
+                            )
+                        )
+                    )
                 else:
-                    self.log('Skipping file', video_name, 'as it already exists.')
+                    self.log(
+                        'Skipping file', video_name, 'as it already exists.'
+                    )
 
                 if videos_saved >= num_to_download:
                     break
 
         self.log('Saved', videos_saved, 'videos to', self.directory)
-            
+
     def add_metadata(self, photo_name, caption, date_time):
         """
         Tag downloaded photos with metadata from associated Instagram post.
@@ -390,7 +446,7 @@ def gen_dict_extract(key, var):
     from http://stackoverflow.com/a/29652561
     author: hexerei software
     """
-    if hasattr(var,'iteritems'):
+    if hasattr(var, 'iteritems'):
         for k, v in var.iteritems():
             if k == key:
                 yield v
@@ -408,26 +464,43 @@ def main():
     parser = argparse.ArgumentParser(description='InstaRaider')
     parser.add_argument('username', help='Instagram username')
     parser.add_argument('directory', help='Where to save the images')
-    parser.add_argument('-n', '--num-to-download',
-                        help='Number of posts to download', type=int)
+    parser.add_argument(
+        '-n',
+        '--num-to-download',
+        help='Number of posts to download',
+        type=int
+    )
     parser.add_argument('-l', '--log-level', help="Log level", default='info')
-    parser.add_argument('-m', '--add_metadata',
-                        help=("Add metadata (caption/date) from Instagram "
-                              "post into downloaded images' exif tags "
-                              "(requires GExiv2 python module)"),
-                        action='store_true', dest='use_metadata')
-    parser.add_argument('-v', '--get_videos',
-                        help=("Download videos"),
-                        action='store_true', dest='get_videos')
+    parser.add_argument(
+        '-m',
+        '--add_metadata',
+        help=(
+            "Add metadata (caption/date) from Instagram "
+            "post into downloaded images' exif tags "
+            "(requires GExiv2 python module)"
+        ),
+        action='store_true',
+        dest='use_metadata'
+    )
+    parser.add_argument(
+        '-v',
+        '--get_videos',
+        help=("Download videos"),
+        action='store_true',
+        dest='get_videos'
+    )
     args = parser.parse_args()
     username = args.username
     directory = op.expanduser(args.directory)
 
-    raider = InstaRaider(username, directory,
-                         num_to_download=args.num_to_download,
-                         log_level=args.log_level,
-                         use_metadata=args.use_metadata,
-                         get_videos=args.get_videos)
+    raider = InstaRaider(
+        username,
+        directory,
+        num_to_download=args.num_to_download,
+        log_level=args.log_level,
+        use_metadata=args.use_metadata,
+        get_videos=args.get_videos
+    )
 
     if not raider.validate():
         return
